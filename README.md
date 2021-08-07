@@ -1,6 +1,12 @@
 # inproc
 Package inproc implements an in-process connection.
 
+[![PkgGoDev](https://pkg.go.dev/badge/github.com/hslam/inproc)](https://pkg.go.dev/github.com/hslam/inproc)
+[![Build Status](https://github.com/hslam/inproc/workflows/build/badge.svg)](https://github.com/hslam/inproc/actions)
+[![codecov](https://codecov.io/gh/hslam/inproc/branch/master/graph/badge.svg)](https://codecov.io/gh/hslam/inproc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hslam/inproc)](https://goreportcard.com/report/github.com/hslam/inproc)
+[![LICENSE](https://img.shields.io/github/license/hslam/inproc.svg?style=flat-square)](https://github.com/hslam/inproc/blob/master/LICENSE)
+
 ## Features
 
 * In process
