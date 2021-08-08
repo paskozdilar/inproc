@@ -10,8 +10,8 @@ Package inproc implements an in-process connection.
 
 ## Features
 
-* In process
-* Compatible with the net.Conn interface.
+* In-process connection.
+* Compatible with the net.Conn and the net.Listener interface.
 
 ## Get started
 
