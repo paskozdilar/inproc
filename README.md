@@ -80,6 +80,11 @@ func main() {
 }
 ```
 
+### Output
+```
+Hello World
+```
+
 ### License
 This package is licensed under a MIT license (Copyright (c) 2021 Meng Huang)
 
