@@ -68,6 +68,7 @@ func TestINPROC(t *testing.T) {
 	if string(buf[:n]) != str {
 		t.Errorf("error %s != %s", string(buf[:n]), str)
 	}
+	time.Sleep(time.Millisecond)
 	conn.Close()
 	l.Addr()
 	l.Close()

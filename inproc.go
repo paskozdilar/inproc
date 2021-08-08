@@ -15,28 +15,35 @@ import (
 
 const network = "inproc"
 
+// addr represents a network end point address.
+//
+// addr implements the net.Addr interface.
 type addr struct {
 	network string
 	address string
 }
 
+// Network returns name of the network.
 func (a addr) Network() string {
 	return a.network
 }
 
+// String returns string form of address.
 func (a addr) String() string {
 	return a.address
 }
 
-var inprocs struct {
+// addrs contains in-process listeners.
+var addrs struct {
 	locker    sync.RWMutex
 	listeners map[addr]*listener
 }
 
 func init() {
-	inprocs.listeners = make(map[addr]*listener)
+	addrs.listeners = make(map[addr]*listener)
 }
 
+// conn implements the net.Conn interface.
 type conn struct {
 	r     io.ReadCloser
 	w     io.WriteCloser
@@ -75,17 +82,17 @@ func (c *conn) RemoteAddr() net.Addr {
 	return c.raddr
 }
 
-// SetDeadline implements the Conn SetDeadline method.
+// SetDeadline implements the net.Conn SetDeadline method.
 func (c *conn) SetDeadline(t time.Time) error {
 	return errors.New("not supported")
 }
 
-// SetReadDeadline implements the Conn SetReadDeadline method.
+// SetReadDeadline implements the net.Conn SetReadDeadline method.
 func (c *conn) SetReadDeadline(t time.Time) error {
 	return errors.New("not supported")
 }
 
-// SetWriteDeadline implements the Conn SetWriteDeadline method.
+// SetWriteDeadline implements the net.Conn SetWriteDeadline method.
 func (c *conn) SetWriteDeadline(t time.Time) error {
 	return errors.New("not supported")
 }
@@ -96,13 +103,13 @@ func Dial(address string) (net.Conn, error) {
 	var accepter *accepter
 	r, w := io.Pipe()
 	conn := &conn{w: w, laddr: raddr}
-	inprocs.locker.RLock()
-	l, ok := inprocs.listeners[raddr]
+	addrs.locker.RLock()
+	l, ok := addrs.listeners[raddr]
 	if !ok {
-		inprocs.locker.RUnlock()
+		addrs.locker.RUnlock()
 		return nil, errors.New("connection refused")
 	}
-	inprocs.locker.RUnlock()
+	addrs.locker.RUnlock()
 	l.locker.Lock()
 	for {
 		if len(l.accepters) > 0 {
@@ -121,6 +128,7 @@ func Dial(address string) (net.Conn, error) {
 	return conn, nil
 }
 
+// listener implements the net.Listener interface.
 type listener struct {
 	laddr     addr
 	cond      sync.Cond
@@ -141,13 +149,13 @@ func Listen(address string) (net.Listener, error) {
 	laddr := addr{network: network, address: address}
 	l := &listener{laddr: laddr, done: make(chan struct{})}
 	l.cond.L = &l.locker
-	inprocs.locker.Lock()
-	if _, ok := inprocs.listeners[l.laddr]; ok {
-		inprocs.locker.Unlock()
+	addrs.locker.Lock()
+	if _, ok := addrs.listeners[l.laddr]; ok {
+		addrs.locker.Unlock()
 		return nil, errors.New("address already in use")
 	}
-	inprocs.listeners[l.laddr] = l
-	inprocs.locker.Unlock()
+	addrs.listeners[l.laddr] = l
+	addrs.locker.Unlock()
 	return l, nil
 }
 
@@ -174,9 +182,9 @@ func (l *listener) Close() error {
 	if atomic.CompareAndSwapInt32(&l.closed, 0, 1) {
 		close(l.done)
 	}
-	inprocs.locker.Lock()
-	delete(inprocs.listeners, l.laddr)
-	inprocs.locker.Unlock()
+	addrs.locker.Lock()
+	delete(addrs.listeners, l.laddr)
+	addrs.locker.Unlock()
 	l.locker.Lock()
 	accepters := l.accepters
 	l.accepters = nil
