@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// network represents name of the network.
 const network = "inproc"
 
 // addr represents a network end point address.
