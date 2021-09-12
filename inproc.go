@@ -168,7 +168,7 @@ func (l *listener) Accept() (net.Conn, error) {
 	l.locker.Lock()
 	l.accepters = append(l.accepters, accepter)
 	l.locker.Unlock()
-	l.cond.Broadcast()
+	l.cond.Signal()
 	select {
 	case <-accepter.done:
 		return accepter.conn, nil
