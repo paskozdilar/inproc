@@ -6,7 +6,6 @@ package inproc
 
 import (
 	"errors"
-	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -46,10 +45,11 @@ func init() {
 
 // conn implements the net.Conn interface.
 type conn struct {
-	r     io.ReadCloser
-	w     io.WriteCloser
-	laddr addr
-	raddr addr
+	r         net.Conn
+	w         net.Conn
+	laddr     addr
+	raddr     addr
+	rDeadline time.Time
 }
 
 // Read reads data from the connection.
@@ -85,24 +85,35 @@ func (c *conn) RemoteAddr() net.Addr {
 
 // SetDeadline implements the net.Conn SetDeadline method.
 func (c *conn) SetDeadline(t time.Time) error {
-	return errors.New("not supported")
+	if err := c.r.SetReadDeadline(t); err != nil {
+		return err
+	}
+	if err := c.w.SetWriteDeadline(t); err != nil {
+		// if setting read deadline succeeded, but setting write deadline
+		// failed, revert old read deadline.
+		c.r.SetReadDeadline(c.rDeadline)
+		return err
+	}
+	// update read deadline
+	c.rDeadline = t
+	return nil
 }
 
 // SetReadDeadline implements the net.Conn SetReadDeadline method.
 func (c *conn) SetReadDeadline(t time.Time) error {
-	return errors.New("not supported")
+	return c.r.SetReadDeadline(t)
 }
 
 // SetWriteDeadline implements the net.Conn SetWriteDeadline method.
 func (c *conn) SetWriteDeadline(t time.Time) error {
-	return errors.New("not supported")
+	return c.w.SetWriteDeadline(t)
 }
 
 // Dial connects to an address.
 func Dial(address string) (net.Conn, error) {
 	raddr := addr{network: network, address: address}
 	var accepter *accepter
-	r, w := io.Pipe()
+	r, w := net.Pipe()
 	conn := &conn{w: w, laddr: raddr}
 	addrs.locker.RLock()
 	l, ok := addrs.listeners[raddr]
@@ -141,7 +152,7 @@ type listener struct {
 
 type accepter struct {
 	*conn
-	reader io.ReadCloser
+	reader net.Conn
 	done   chan struct{}
 }
 
@@ -162,7 +173,7 @@ func Listen(address string) (net.Listener, error) {
 
 // Accept waits for and returns the next connection to the listener.
 func (l *listener) Accept() (net.Conn, error) {
-	r, w := io.Pipe()
+	r, w := net.Pipe()
 	accepter := &accepter{conn: &conn{w: w, laddr: l.laddr}, reader: r}
 	accepter.done = make(chan struct{})
 	l.locker.Lock()
